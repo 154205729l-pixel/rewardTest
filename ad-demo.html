@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>懂球帝数藏 - 广告请求 Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f5f5; color: #333; }
+.header { background: #1a1a1a; color: #fff; padding: 14px 16px; font-size: 16px; text-align: center; }
+.section { margin: 12px; background: #fff; border-radius: 10px; padding: 16px; }
+.section-title { font-size: 15px; font-weight: bold; margin-bottom: 12px; border-left: 3px solid #e4393c; padding-left: 8px; }
+.btn { display: block; width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px; color: #fff; cursor: pointer; margin-bottom: 10px; }
+.btn-primary { background: #e4393c; }
+.btn-video { background: #1a1a1a; }
+.btn:disabled { background: #ccc; }
+.status { font-size: 13px; color: #666; margin-top: 8px; padding: 8px; background: #f9f9f9; border-radius: 6px; min-height: 30px; }
+.ad-data { font-size: 12px; color: #333; margin-top: 10px; background: #f0f0f0; border-radius: 6px; padding: 12px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; font-family: monospace; }
+.video-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; flex-direction: column; }
+.video-overlay.show { display: flex; }
+.video-box { width: 80%; background: #000; border-radius: 12px; padding: 40px 20px; text-align: center; color: #fff; }
+.video-box .countdown { font-size: 48px; font-weight: bold; margin: 20px 0; }
+.video-box .label { font-size: 14px; color: #aaa; }
+.video-box .reward { font-size: 16px; color: #4caf50; margin-top: 16px; display: none; }
+.close-btn { margin-top: 20px; padding: 10px 40px; background: #e4393c; color: #fff; border: none; border-radius: 8px; font-size: 15px; display: none; }
+.flow-step { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+.flow-step:last-child { border: none; }
+.step-num { width: 24px; height: 24px; background: #e4393c; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; margin-right: 10px; flex-shrink: 0; }
+.step-num.done { background: #4caf50; }
+.step-text { font-size: 13px; }
+.pgid-select { margin-bottom: 12px; }
+.pgid-select label { font-size: 13px; color: #666; }
+.pgid-select select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">懂球帝数藏 广告请求 Demo</div>
+
+<!-- Part 1: 广告 API 请求 -->
+<div class="section">
+  <div class="section-title">1. 广告 API 请求</div>
+  <div class="pgid-select">
+    <label>用户类型：</label>
+    <select id="pgidSelect">
+      <option value="1.15.2">普通用户 (pgid: 1.15.2)</option>
+      <option value="8.15.2">VIP用户 (pgid: 8.15.2)</option>
+    </select>
+  </div>
+  <button class="btn btn-primary" onclick="fetchAdData()">请求广告数据</button>
+  <div class="status" id="apiStatus">点击按钮请求 ap.dongqiudi.com 广告接口</div>
+  <div class="ad-data" id="adDataDisplay" style="display:none"></div>
+</div>
+
+<!-- Part 2: 真实激励视频调用 -->
+<div class="section">
+  <div class="section-title">2. 播放激励视频（需在App内打开）</div>
+  <button class="btn btn-video" id="playAdBtn" onclick="playRewardVideo()">播放激励视频广告</button>
+  <div class="status" id="adStatus">点击按钮调用 showRewardVideoAd bridge</div>
+  <div class="ad-data" id="adLog" style="display:none"></div>
+</div>
+
+<!-- Part 3: 原始代码参考 -->
+<div class="section">
+  <div class="section-title">3. 原始代码逻辑</div>
+  <div class="ad-data" style="display:block; font-size:11px">// getAdData - 请求广告配置
+adUrl = "https://ap.dongqiudi.com/plat/v3"
+pgid = is_vip ? "8.15.2" : "1.15.2"
+bridge.callHandler("adRequest", { method:"get", url:adUrl, param:{pgid} })
+
+// 回调处理 - 找到激励视频广告 (真实数据: topon SDK)
+adData.forEach(item => {
+  if (item.ad_type === "sdk_rewarded_video") {
+    videoConfig = {
+      origin: item.ad_source.sdk_origin,      // "topon"
+      sdk_id: item.ad_source.sdk_position_id,  // "b6861fb121e63d"
+      sdk_name: item.ad_source.sdk_name,       // "topon"
+      imp_mon_arr: item.imp_mon_arr,           // 曝光监测
+      click_mon_arr: item.click_mon_arr,       // 点击监测
+      pgid: pgid
+    }
+    bridge.callHandler("preLoadVideo", videoConfig)  // 预加载
+  }
+})
+
+// showAdVideo - 播放激励视频
+bridge.callHandler("connectVideo", {
+  id: "leagueCollect_14", data:{}, ...videoConfig
+})</div>
+</div>
+
+
+<script>
+var adResponseData = null;
+var videoConfig = null;
+
+function fetchAdData() {
+  var pgid = document.getElementById('pgidSelect').value;
+  var statusEl = document.getElementById('apiStatus');
+  var dataEl = document.getElementById('adDataDisplay');
+  statusEl.textContent = '请求中...';
+  dataEl.style.display = 'none';
+
+  fetch('/plat/v3?pgid=' + pgid)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      adResponseData = data;
+      statusEl.textContent = '请求成功! code=' + data.code;
+      dataEl.style.display = 'block';
+      dataEl.textContent = JSON.stringify(data, null, 2);
+    })
+    .catch(function(err) {
+      statusEl.textContent = '请求失败(可能跨域限制): ' + err.message;
+      statusEl.textContent += '\n\n提示: 广告API可能有跨域限制，在App内通过native bridge请求不受此限制。';
+      // 用真实抓包数据
+      var realData = {
+        code: 0, message: "SUCCESS",
+        data: [{
+          pgid: "1.15.2",
+          priority: 60,
+          aid: "254344",
+          request_id: "e8b14fdbadabc98a395c599011296e5d",
+          ad_type: "sdk_rewarded_video",
+          ad_source: {
+            mk: 254344,
+            sdk_name: "topon",
+            sdk_origin: "topon",
+            sdk_position_id: "b6861fb121e63d",
+            ready_load_count: 0,
+            label: "",
+            label_color: ""
+          },
+          position: "0",
+          imp_mon_arr: ["https://dab.dongdianqiu.com/imp/v3?ex=QvZPBYyooydf8cfAaswS3O0X4Cdsq0Nbuss1LQ2dxqf3drp1njXpNAAb--B--XAMkqNx4A0t5ILlBZOpprk_&uid=221714&cid=254344&posid=100000173&ruleid=1002&clientip=183.241.206.168&androidid=__ANDROIDID__&os=ios&net=__NET__&idfa=__IDFA__&imei=__IMEI__&mn=__MN__&rid=e8b14fdbadabc98a395c599011296e5d&apvc=8.5.2&qt=__TT__&cp=__CP__&uuid=@E72lAwQdazQXIr7oP8uc3BiOmSTg9hjgRIPByp6ueGaQkzd8XKyNvQAbOnGv01K9wkAvqaUkQnQ=&position=0&pgid=1.15.2&platform=1&ex2=&cff=__CFF__&tpt=0&oaid=__OAID__"],
+          click_mon_arr: ["https://dab.dongdianqiu.com/click/v3?ex=QvZPBYyooydf8cfAaswS3O0X4Cdsq0Nbuss1LQ2dxqf3drp1njXpNAAb--B--XAMkqNx4A0t5ILlBZOpprk_&uid=221714&cid=254344&posid=100000173&ruleid=1002&clientip=183.241.206.168&androidid=__ANDROIDID__&os=ios&net=__NET__&idfa=__IDFA__&imei=__IMEI__&mn=__MN__&rid=e8b14fdbadabc98a395c599011296e5d&apvc=8.5.2&qt=__TT__&cp=__CP__&uuid=@E72lAwQdazQXIr7oP8uc3BiOmSTg9hjgRIPByp6ueGaQkzd8XKyNvQAbOnGv01K9wkAvqaUkQnQ=&position=0&pgid=1.15.2&platform=1&ex2=&cff=__CFF__&tpt=0&oaid=__OAID__"],
+          origin: "topon",
+          vip: 0,
+          vic: 10,
+          ecpm: 999999999,
+          link_macro_replace: false
+        }]
+      };
+      adResponseData = realData;
+      dataEl.style.display = 'block';
+      dataEl.textContent = '(真实抓包数据)\n\n' + JSON.stringify(realData, null, 2);
+    });
+}
+
+function log(msg) {
+  var el = document.getElementById('adLog');
+  el.style.display = 'block';
+  el.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
+}
+
+function playRewardVideo() {
+  var statusEl = document.getElementById('adStatus');
+  var btn = document.getElementById('playAdBtn');
+
+  if (!window.WebViewJavascriptBridge) {
+    statusEl.textContent = 'bridge 不存在，请在懂球帝 App 内打开此页面';
+    log('错误: WebViewJavascriptBridge 未找到');
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.textContent = '正在调用 showRewardVideoAd...';
+  log('调用 bridge.callHandler("showRewardVideoAd", {})');
+
+  window.WebViewJavascriptBridge.callHandler('showRewardVideoAd', {}, function(res) {
+    log('回调返回: ' + JSON.stringify(res));
+    statusEl.textContent = '视频播放完成，回调已触发';
+    btn.disabled = false;
+  });
+}
+</script>
+</body>
+</html>
